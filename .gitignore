@@ -13,7 +13,6 @@ __pycache__/
 coverage.xml
 
 # Virtual envs (any location)
-venv
 venv/
 .venv/
 env/
@@ -22,7 +21,6 @@ env/
 
 # Node/Frontend
 node_modules/
-*.tsbuildinfo
 dist/
 build/
 
@@ -33,8 +31,26 @@ build/
 
 # Uploads and generated media
 uploads/
+data
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
 
 
+# vercel
+.vercel
 
-
-
+# typescript
+next-env.d.ts
