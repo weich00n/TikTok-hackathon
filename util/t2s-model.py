@@ -1,7 +1,9 @@
-from transformers import pipeline
 import torch
+from transformers import Speech2TextProcessor, Speech2TextForConditionalGeneration
+import librosa
 
-pipe = pipeline("automatic-speech-recognition", model="facebook/s2t-small-librispeech-asr")
+model = Speech2TextForConditionalGeneration.from_pretrained("facebook/s2t-small-librispeech-asr")
+processor = Speech2TextProcessor.from_pretrained("facebook/s2t-small-librispeech-asr")
 
 def transcribe_audio(audio_file_path):
     """
@@ -11,8 +13,23 @@ def transcribe_audio(audio_file_path):
     Returns:
         Transcribed text
     """
-    result = pipe(audio_file_path)
-    return result["text"]
+    # Load audio using librosa
+    audio_array, sampling_rate = librosa.load(audio_file_path, sr=16000)
+    
+    # Process audio for the model
+    input_features = processor(
+        audio_array,
+        sampling_rate=16000,
+        return_tensors="pt"
+    ).input_features
+    
+    # Generate transcription
+    generated_ids = model.generate(input_features=input_features)
+    
+    # Decode the transcription
+    transcription = processor.batch_decode(generated_ids, skip_special_tokens=True)
+    
+    return transcription[0]  # Return first (and only) transcription
 
 def transcribe_audio_array(audio_array, sampling_rate=16000):
     """
@@ -23,23 +40,26 @@ def transcribe_audio_array(audio_array, sampling_rate=16000):
     Returns:
         Transcribed text
     """
-    result = pipe({"array": audio_array, "sampling_rate": sampling_rate})
-    return result["text"]
+    # Process audio for the model
+    input_features = processor(
+        audio_array,
+        sampling_rate=sampling_rate,
+        return_tensors="pt"
+    ).input_features
+    
+    # Generate transcription
+    generated_ids = model.generate(input_features=input_features)
+    
+    # Decode the transcription
+    transcription = processor.batch_decode(generated_ids, skip_special_tokens=True)
+    
+    return transcription[0]
 
 def main():
     # Example 1: From file
     audio_file = "data/testaudio1.m4a"
     text = transcribe_audio(audio_file)
     print(f"Transcribed: {text}")
-    
-    # Example 2: From microphone (requires additional setup)
-    # import sounddevice as sd
-    # duration = 5  # seconds
-    # sample_rate = 16000
-    # audio = sd.rec(int(duration * sample_rate), samplerate=sample_rate, channels=1)
-    # sd.wait()
-    # text = transcribe_audio_array(audio.flatten(), sample_rate)
-    # print(f"Transcribed: {text}")
     
     print("Speech-to-text model loaded. Use transcribe_audio() or transcribe_audio_array()")
 
