@@ -1,0 +1,36 @@
+# General
+.DS_Store
+Thumbs.db
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+
+# Virtual envs (any location)
+venv/
+.venv/
+env/
+.env
+.env.*
+
+# Node/Frontend
+node_modules/
+*.tsbuildinfo
+dist/
+build/
+
+# Editor/OS
+.idea/
+.vscode/
+*.swp
+
+# Uploads and generated media
+uploads/
+
+
