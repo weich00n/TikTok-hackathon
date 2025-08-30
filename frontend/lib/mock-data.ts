@@ -40,8 +40,8 @@ export const mockMessages: Message[] = [
   {
     id: "2",
     chatId: "1",
-    senderId: "1",
-    content: "I'm good! My phone number is [REDACTED] if you need to call me.",
+    senderId: "2",
+    content: "My phone number is [REDACTED] if you need to call me.",
     type: "text",
     timestamp: new Date(Date.now() - 3000000), // 50 minutes ago
     isRedacted: true,
@@ -59,14 +59,5 @@ export const mockChats: Chat[] = [
     createdAt: new Date(Date.now() - 86400000), // 1 day ago
     updatedAt: new Date(Date.now() - 3000000),
     isGroup: false,
-  },
-  {
-    id: "2",
-    name: "Work Group",
-    participants: ["1", "2", "3"],
-    messages: [],
-    createdAt: new Date(Date.now() - 172800000), // 2 days ago
-    updatedAt: new Date(Date.now() - 172800000),
-    isGroup: true,
-  },
+  }
 ]
