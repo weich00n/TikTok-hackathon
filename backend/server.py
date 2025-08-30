@@ -198,6 +198,29 @@ def process_text_with_pii(text):
     }
 
 # REST routes
+@app.route('/detect_pii', methods=['POST'])
+def detect_pii():
+    """Endpoint for text PII detection"""
+    try:
+        data = request.get_json()
+        if not data or 'text' not in data:
+            return jsonify({"error": "Missing 'text' field"}), 400
+        
+        text = data['text']
+        pii_result = process_text_with_pii(text)
+        
+        return jsonify({
+            "hasRedactions": pii_result["hasRedactions"],
+            "redactedContent": pii_result["redactedContent"],
+            "detectedFields": pii_result["detectedFields"],
+            "originalContent": pii_result["originalContent"],
+            "detectionDetails": pii_result["detectionDetails"]
+        }), 200
+        
+    except Exception as e:
+        print(f"PII detection error: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/conversations', methods=['POST'])
 def create_conversation():
     room_code = generate_room_code()
