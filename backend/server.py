@@ -12,8 +12,9 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'util'))
 import importlib.util
-from pydub import AudioSegment
-import subprocess
+import librosa
+import numpy as np
+import ffmpeg
 
 # Lazy loading variables for ML models
 _t2s_model = None
@@ -62,30 +63,31 @@ def generate_room_code(length=6):
 
 def get_audio_duration(file_path):
     try:
-        audio = AudioSegment.from_file(file_path)
-        duration = len(audio) / 1000.0  # duration in seconds
+        # Use librosa instead of pydub
+        y, sr = librosa.load(file_path)
+        duration = len(y) / sr
         return duration
     except Exception as e:
-        print(f"Error getting audio duration with pydub: {e}")
+        print(f"Error getting audio duration with librosa: {e}")
         return 1
 
 def convert_to_wav(input_path):
-    output_path = input_path.rsplit('.', 1)[0] + ".wav"
+    """Convert audio file to WAV using ffmpeg-python"""
     try:
-        result = subprocess.run(
-            [
-                "ffmpeg", "-y", "-i", input_path,
-                "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", output_path
-            ],
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+        output_path = input_path.rsplit('.', 1)[0] + ".wav"
+        
+        # Use ffmpeg for conversion
+        (
+            ffmpeg
+            .input(input_path)
+            .output(output_path, acodec='pcm_s16le', ac=1, ar='16000')
+            .overwrite_output()
+            .run(quiet=True)
         )
-        print("ffmpeg stdout:", result.stdout.decode())
-        print("ffmpeg stderr:", result.stderr.decode())
+        
         return output_path
     except Exception as e:
-        print(f"FFmpeg conversion failed: {e}")
+        print(f"❌ FFmpeg conversion failed: {e}")
         return None
 
 def process_audio_message(audio_path, room_code, sender_name):
