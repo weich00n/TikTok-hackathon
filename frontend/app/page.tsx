@@ -1,3 +1,4 @@
+"use client"
 import { useState, useEffect } from "react"
 import { MessageInterface } from "@/components/message-interface"
 import type { User, Chat, Message } from "@/types/messaging"
@@ -8,7 +9,7 @@ export default function MessagingApp() {
   const [currentUser] = useState<User>(mockUsers[0]) // Default to first mock user
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null)
   const [chats, setChats] = useState<Chat[]>([])
-  const [useBackendPII, setUseBackendPII] = useState(false)
+  const [useBackendPII, setUseBackendPII] = useState(true)
   const [backendStatus, setBackendStatus] = useState<'checking' | 'available' | 'unavailable'>('checking')
 
   useEffect(() => {
@@ -24,7 +25,7 @@ export default function MessagingApp() {
   useEffect(() => {
     const checkBackend = async () => {
       try {
-        const response = await fetch("http://localhost:5000/detect_pii", {
+        const response = await fetch("http://127.0.0.1:5000/api/process_text", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: "test" }),
@@ -43,26 +44,69 @@ export default function MessagingApp() {
   }, [])
 
 
-  const handleSendMessage = async (content: string, type: "text" | "voice" = "text") => {
+  const handleSendMessage = async (content: string | Blob, type: "text" | "voice" = "text") => {
     if (!selectedChat) return
 
-    let piiResult
-    
+    let processedContent = ""
+    let piiResult = { hasRedactions: false, detectedFields: [], redactedContent: "", detectionDetails: [] }
+
     try {
-      if (useBackendPII && backendStatus === 'available') {
-        // Use backend PII detection
-        piiResult = await piiDetector.detectPIIWithModel(content)
-      } else {
-        // Fallback to client-side detection
-        piiResult = piiDetector.detectPII(content)
+      if (type === "voice" && content instanceof Blob) {
+        // Send audio to backend for transcription and PII detection
+        const formData = new FormData()
+        formData.append("audio", content, "voice-message.wav")
+        const response = await fetch("http://localhost:5000/api/process_voice", {
+          method: "POST",
+          body: formData,
+        })
+        const data = await response.json()
+        processedContent = data.piiDetection?.redactedContent || data.transcribed_text || "[Unrecognized audio]"
+        piiResult = data.piiDetection || { hasRedactions: false, detectedFields: [], redactedContent: processedContent, detectionDetails: [] }
+      } else if (typeof content === "string") {
+        // Handle text messages with PII detection
+        if (useBackendPII && backendStatus === 'available') {
+          // Use backend PII detection
+          try {
+            const response = await fetch("http://127.0.0.1:5000/api/process_text", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text: content }),
+            })
+            
+            if (response.ok) {
+              const backendPiiResult = await response.json()
+              piiResult = {
+                hasRedactions: backendPiiResult.piiDetection?.hasRedactions || false,
+                detectedFields: backendPiiResult.piiDetection?.detectedFields || [],
+                redactedContent: backendPiiResult.piiDetection?.redactedContent || content,
+                detectionDetails: backendPiiResult.piiDetection?.detectionDetails || []
+              }
+              processedContent = piiResult.redactedContent
+              console.log("✅ Backend PII detection completed:", piiResult)
+            } else {
+              console.warn("Backend PII detection failed, falling back to client-side")
+              // Fallback to client-side detection
+              piiResult = piiDetector.detectPII(content)
+              processedContent = piiResult.hasRedactions ? piiResult.redactedContent : content
+            }
+          } catch (fetchError) {
+            console.warn("Backend PII detection error, falling back to client-side:", fetchError)
+            // Fallback to client-side detection
+            piiResult = piiDetector.detectPII(content)
+            processedContent = piiResult.hasRedactions ? piiResult.redactedContent : content
+          }
+        } else {
+          // Use client-side PII detection
+          piiResult = piiDetector.detectPII(content)
+          processedContent = piiResult.hasRedactions ? piiResult.redactedContent : content
+          console.log("✅ Client-side PII detection completed:", piiResult)
+        }
       }
     } catch (error) {
-      console.error("PII detection failed, using original content:", error)
-      // Fallback to client-side detection if backend fails
-      piiResult = piiDetector.detectPII(content)
+      console.error("Message processing failed:", error)
+      processedContent = typeof content === "string" ? content : "[Audio message]"
+      piiResult = { hasRedactions: false, detectedFields: [], redactedContent: processedContent, detectionDetails: [] }
     }
-
-    const processedContent = piiResult.hasRedactions ? piiResult.redactedContent : content
 
     const newMessage: Message = {
       id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -74,6 +118,11 @@ export default function MessagingApp() {
       isRedacted: piiResult.hasRedactions,
       originalContent: content,
       redactedFields: piiResult.detectedFields,
+      piiDetection: {
+        hasRedactions: piiResult.hasRedactions,
+        detectedFields: piiResult.detectedFields,
+        detectionDetails: piiResult.detectionDetails || []
+      }
     }
 
     const updatedChat = {
@@ -88,7 +137,10 @@ export default function MessagingApp() {
 
     console.log("[v0] Message sent:", newMessage)
     console.log("PII Detection Method:", useBackendPII && backendStatus === 'available' ? 'Backend' : 'Client-side')
-
+    
+    if (piiResult.hasRedactions) {
+      console.log("🔒 PII detected and redacted:", piiResult.detectedFields)
+    }
   }
 
   return (

@@ -1,0 +1,22 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment created under backend/
+Lib/
+Scripts/
+Include/
+pyvenv.cfg
+
+# Packaging / build artifacts
+build/
+dist/
+*.egg-info/
+
+# Environment files
+.env
+.env.*
+
+# Uploaded files (use root .gitignore for global rule too)
+uploads/

@@ -1,9 +1,37 @@
-venv
-data
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# General
+.DS_Store
+Thumbs.db
+*.log
 
-# dependencies
-/node_modules
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+
+# Virtual envs (any location)
+venv/
+.venv/
+env/
+.env
+.env.*
+
+# Node/Frontend
+node_modules/
+dist/
+build/
+
+# Editor/OS
+.idea/
+.vscode/
+*.swp
+
+# Uploads and generated media
+uploads/
+data
 
 # next.js
 /.next/
@@ -19,11 +47,10 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files
-.env*
+
 
 # vercel
 .vercel
 
 # typescript
-*.tsbuildinfo
 next-env.d.ts
