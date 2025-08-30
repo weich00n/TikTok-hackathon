@@ -95,7 +95,7 @@ def process_audio_message(audio_path, room_code, sender_name):
     public_url = f"/voice/{room_code}/{os.path.basename(audio_path)}"
     
     # Get audio duration
-    duration = get_audio_duration(audio_path)
+    duration = float(get_audio_duration(audio_path))
     
     try:
         # Transcribe the audio
@@ -117,7 +117,7 @@ def process_audio_message(audio_path, room_code, sender_name):
             "type": "voice",
             "timestamp": timestamp.isoformat(),
             "timestampMs": int(timestamp.timestamp() * 1000),
-            "duration": round(duration, 2),
+            "duration": float(round(duration, 2)),
             "audioUrl": public_url,
             "audioPath": audio_path,
             "transcription": {
@@ -151,7 +151,7 @@ def process_audio_message(audio_path, room_code, sender_name):
             "type": "voice",
             "timestamp": timestamp.isoformat(),
             "timestampMs": int(timestamp.timestamp() * 1000),
-            "duration": round(duration, 2),
+            "duration": float(round(duration, 2)),
             "audioUrl": public_url,
             "audioPath": audio_path,
             "transcription": {
@@ -191,7 +191,7 @@ def process_text_with_pii(text):
             {
                 "type": r['entity_group'],
                 "original": text[r['start']:r['end']],
-                "confidence": r['score'],
+                "confidence": float(r['score']),
                 "position": [r['start'], r['end']]
             } for r in results
         ]
@@ -600,7 +600,7 @@ def api_test_audio_file():
 
     try:
         print("⏱️ Getting audio duration...")
-        duration = get_audio_duration(temp_path)
+        duration = float(get_audio_duration(temp_path))
         print(f"⏱️ Duration: {duration}")
 
         print("🧠 Loading T2S model...")

@@ -60,8 +60,8 @@ export default function MessagingApp() {
           body: formData,
         })
         const data = await response.json()
-        processedContent = data.pii_result?.redactedContent || data.transcribed_text || "[Unrecognized audio]"
-        piiResult = data.pii_result || { hasRedactions: false, detectedFields: [] }
+        processedContent = data.piiDetection?.redactedContent || data.transcribed_text || "[Unrecognized audio]"
+        piiResult = data.piiDetection || { hasRedactions: false, detectedFields: [] }
       } else if (typeof content === "string") {
         // Only use string methods here!
         // ...PII detection or text processing...
