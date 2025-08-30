@@ -1,18 +1,17 @@
 # 🎙️ TikTok Hackathon - Secure Audio Messaging Platform
 
-An innovative real-time chat application built for the TikTok Hackathon featuring advanced voice messaging capabilities with intelligent PII (Personally Identifiable Information) detection and automatic redaction. This platform ensures user privacy while maintaining seamless communication through cutting-edge AI technologies.
+Motivation: In a digital age where our personal lives and the digital space is increasingly intertwined, our Personally Identifiable Information (PII) becomes ever more valuable for malicious actors(e.g. scammers). The implications of a PII leak today has never been more grave than ever before. Therefore, we introduce Beep, an innovative real-time chat application built for the TikTok Hackathon featuring advanced voice messaging capabilities with intelligent PII (Personally Identifiable Information) detection and automatic redaction. This platform ensures user privacy while maintaining seamless communication through cutting-edge AI technologies. We hope to inspire a new generation of real-time chat applications that are centered on protecting their user's PII.
 
 ## 🌟 Key Highlights
 
 - **🎯 Privacy-First**: Automatic detection and redaction of sensitive information in real-time
 - **🎤 Voice Intelligence**: Advanced speech-to-text with multiple audio format support  
 - **⚡ Real-Time**: Instant messaging with WebSocket technology
-- **🛡️ Enterprise Security**: Comprehensive PII protection for GDPR/CCPA compliance
+- **🛡️ Enterprise Security**: Comprehensive PII protection
 - **🎨 Modern UI**: Beautiful, responsive interface built with Next.js and Tailwind CSS
-- **🔧 Developer Friendly**: Comprehensive testing suite and clear documentation
 
 ## 🏗️ Architecture Overview
-
+![alt text](telegram-cloud-photo-size-5-6167981102355040818-y.jpg)
 ### Technology Stack
 
 **Backend**
@@ -41,7 +40,7 @@ An innovative real-time chat application built for the TikTok Hackathon featurin
 ```
 TikTok-hackathon/
 ├── backend/                    # 🚀 Flask-SocketIO Server
-│   ├── server.py              # Main application server (639 lines)
+│   ├── server.py              # Main application server 
 │   ├── tempCodeRunnerFile.py  # Development utilities
 │   └── uploads/               # 📁 Audio file storage
 │       └── audio/             # Organized by room codes
@@ -176,7 +175,6 @@ NEXT_PUBLIC_WS_URL=http://127.0.0.1:5000
 - **🎯 Smart Redaction**: Phone numbers, emails, SSNs, addresses → `[REDACTED]`
 - **📈 Confidence Reporting**: Detailed detection metrics and field types
 - **🔐 Privacy Preservation**: Original content stored securely for authorized review
-- **⚖️ Compliance Ready**: GDPR, CCPA, and HIPAA-friendly design
 
 ### 💬 Real-time Communication
 - **🔌 SocketIO Integration**: Low-latency bidirectional communication
@@ -185,12 +183,6 @@ NEXT_PUBLIC_WS_URL=http://127.0.0.1:5000
 - **💾 Message Persistence**: Conversation history with searchable archives
 - **⌨️ Typing Indicators**: Real-time typing status for enhanced UX
 
-### 🎨 Modern User Interface
-- **📱 Responsive Design**: Mobile-first approach with desktop optimization
-- **🌙 Theme Support**: Light/dark mode with system preference detection
-- **♿ Accessibility**: WCAG 2.1 compliant with screen reader support
-- **🎭 Component Library**: 40+ reusable Radix UI components
-- **🎪 Smooth Animations**: Framer Motion for delightful interactions
 
 ## 🔧 API Documentation
 
