@@ -1,0 +1,175 @@
+{
+  "test_data": {
+    "users": [
+      {
+        "name": "Alice",
+        "test_messages": [
+          "Hello everyone!",
+          "My phone number is 555-123-4567",
+          "You can reach me at alice@company.com",
+          "I live at 123 Main Street, Anytown USA"
+        ]
+      },
+      {
+        "name": "Bob",
+        "test_messages": [
+          "Hey there!",
+          "Call me at (555) 987-6543",
+          "My SSN is 123-45-6789",
+          "Regular message without PII"
+        ]
+      },
+      {
+        "name": "Charlie",
+        "test_messages": [
+          "Good morning!",
+          "My credit card number is 4532-1234-5678-9012",
+          "Email me at charlie.brown@email.com",
+          "Just saying hello to everyone"
+        ]
+      }
+    ],
+    "pii_test_cases": [
+      {
+        "description": "Phone numbers",
+        "messages": [
+          "Call me at 555-123-4567",
+          "My number is (555) 987-6543",
+          "Phone: +1-555-123-4567",
+          "You can reach me at 555.123.4567"
+        ]
+      },
+      {
+        "description": "Email addresses",
+        "messages": [
+          "Email me at john@example.com",
+          "My work email is jane.doe@company.co.uk",
+          "Contact: support@website.org",
+          "Personal email: user123@gmail.com"
+        ]
+      },
+      {
+        "description": "SSN and IDs",
+        "messages": [
+          "My SSN is 123-45-6789",
+          "ID number: 987-65-4321",
+          "Social security: 555-44-3333"
+        ]
+      },
+      {
+        "description": "Credit card numbers",
+        "messages": [
+          "Card number: 4532-1234-5678-9012",
+          "My Visa is 4111111111111111",
+          "Credit card: 5555-5555-5555-4444"
+        ]
+      },
+      {
+        "description": "Addresses",
+        "messages": [
+          "I live at 123 Main Street, Anytown USA",
+          "Address: 456 Oak Avenue, Springfield IL 62701",
+          "My home is 789 Pine Road, Suite 100, Boston MA"
+        ]
+      },
+      {
+        "description": "Mixed PII",
+        "messages": [
+          "Hi, I'm John Doe. Call me at 555-123-4567 or email john@example.com",
+          "My info: Phone (555) 987-6543, Email jane@company.com, SSN 123-45-6789",
+          "Contact details: 555-111-2222, user@email.com, 123 Main St"
+        ]
+      },
+      {
+        "description": "Clean messages (no PII)",
+        "messages": [
+          "Hello everyone, how are you today?",
+          "The weather is nice outside",
+          "I love this chat application!",
+          "Thanks for building this awesome tool",
+          "What's everyone's favorite color?",
+          "I had a great lunch today",
+          "Looking forward to the weekend"
+        ]
+      }
+    ],
+    "session_test_data": [
+      {
+        "name": "TestUser1",
+        "room": "TESTROOM1"
+      },
+      {
+        "name": "TestUser2", 
+        "room": "TESTROOM1"
+      },
+      {
+        "name": "AdminUser",
+        "room": "ADMINROOM"
+      },
+      {
+        "name": "GuestUser",
+        "room": "GUESTROOM"
+      }
+    ],
+    "audio_test_scenarios": [
+      {
+        "description": "Voice message with phone number",
+        "expected_transcription": "Please call me at five five five one two three four five six seven"
+      },
+      {
+        "description": "Voice message with email",
+        "expected_transcription": "Send me an email at john dot doe at example dot com"
+      },
+      {
+        "description": "Clean voice message",
+        "expected_transcription": "Hello everyone, this is a test voice message"
+      }
+    ],
+    "error_test_cases": [
+      {
+        "endpoint": "/conversations/NONEXISTENT",
+        "method": "GET",
+        "expected_status": 404,
+        "description": "Invalid room code"
+      },
+      {
+        "endpoint": "/messages/NONEXISTENT", 
+        "method": "GET",
+        "expected_status": 404,
+        "description": "Messages for non-existent room"
+      },
+      {
+        "endpoint": "/session",
+        "method": "POST",
+        "data": {},
+        "expected_status": 400,
+        "description": "Missing required session data"
+      },
+      {
+        "endpoint": "/session",
+        "method": "POST", 
+        "data": {"name": "Test"},
+        "expected_status": 400,
+        "description": "Missing room in session data"
+      },
+      {
+        "endpoint": "/voice/TESTROOM",
+        "method": "POST",
+        "expected_status": 400,
+        "description": "Voice upload without file"
+      }
+    ]
+  },
+  "usage_instructions": {
+    "python_testing": "Run 'python test_routes.py' for comprehensive HTTP testing",
+    "socketio_testing": "Run 'python test_socketio.py' for real-time messaging tests",
+    "manual_testing": "Use the test data above to manually test your API endpoints",
+    "curl_testing": "Run 'test_api.bat' for command-line testing (Windows)",
+    "notes": [
+      "Make sure your Flask app is running on http://127.0.0.1:5000",
+      "The PII detection will automatically redact sensitive information",
+      "Voice messages require actual audio files for transcription testing",
+      "SocketIO testing requires the python-socketio library: pip install python-socketio"
+    ]
+  }
+}
