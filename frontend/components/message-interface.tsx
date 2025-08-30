@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Send, Mic, Search, MoreVertical, Phone, Video } from "lucide-react"
+import { Send, Mic, Search, MoreVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -10,13 +10,14 @@ import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { User, Chat } from "@/types/messaging"
 import { cn } from "@/lib/utils"
+import { VoiceRecorder } from "./voice-recorder" // <-- Import your recorder
 
 interface MessageInterfaceProps {
   currentUser: User
   chats: Chat[]
   selectedChat: Chat | null
   onSelectChat: (chat: Chat) => void
-  onSendMessage: (content: string, type?: "text" | "voice") => void
+  onSendMessage: (content: string | Blob, type?: "text" | "voice") => void
   users: User[]
 }
 
@@ -30,25 +31,12 @@ export function MessageInterface({
 }: MessageInterfaceProps) {
   const [messageInput, setMessageInput] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
-  const [isRecording, setIsRecording] = useState(false)
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false)
 
   const handleSendMessage = () => {
     if (messageInput.trim()) {
       onSendMessage(messageInput.trim())
       setMessageInput("")
-    }
-  }
-
-  const handleVoiceMessage = () => {
-    if (isRecording) {
-      const simulatedTranscript =
-        "This is a simulated voice message transcript. In a real app, this would be the actual transcribed audio."
-      onSendMessage(simulatedTranscript, "voice")
-      setIsRecording(false)
-    } else {
-      setIsRecording(true)
-      // In a real app: startRecording()
-      setTimeout(() => setIsRecording(false), 3000) // Auto-stop after 3s for demo
     }
   }
 
@@ -187,11 +175,7 @@ export function MessageInterface({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon">
-                    
-                  </Button>
-                  
-                  
+                  <Button variant="ghost" size="icon"></Button>
                 </div>
               </div>
             </div>
@@ -273,10 +257,9 @@ export function MessageInterface({
                 </div>
 
                 <Button
-                  variant={isRecording ? "destructive" : "ghost"}
+                  variant="ghost"
                   size="icon"
-                  onClick={handleVoiceMessage}
-                  className={cn(isRecording && "animate-pulse")}
+                  onClick={() => setShowVoiceRecorder(true)}
                 >
                   <Mic className="h-5 w-5" />
                 </Button>
@@ -286,11 +269,15 @@ export function MessageInterface({
                 </Button>
               </div>
 
-              {isRecording && (
-                <div className="mt-2 text-center">
-                  <span className="text-sm text-muted-foreground animate-pulse">
-                    🎤 Recording... (Auto-stop in demo)
-                  </span>
+              {showVoiceRecorder && (
+                <div className="mt-2">
+                  <VoiceRecorder
+                    onSendVoiceMessage={(audioBlob, duration) => {
+                      onSendMessage(audioBlob, "voice")
+                      setShowVoiceRecorder(false)
+                    }}
+                    onCancel={() => setShowVoiceRecorder(false)}
+                  />
                 </div>
               )}
             </div>

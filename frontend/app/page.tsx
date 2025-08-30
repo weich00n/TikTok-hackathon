@@ -1,3 +1,4 @@
+"use client"
 import { useState, useEffect } from "react"
 import { MessageInterface } from "@/components/message-interface"
 import type { User, Chat, Message } from "@/types/messaging"
@@ -43,26 +44,35 @@ export default function MessagingApp() {
   }, [])
 
 
-  const handleSendMessage = async (content: string, type: "text" | "voice" = "text") => {
+  const handleSendMessage = async (content: string | Blob, type: "text" | "voice" = "text") => {
     if (!selectedChat) return
 
-    let piiResult
-    
+    let processedContent = ""
+    let piiResult = { hasRedactions: false, detectedFields: [] }
+
     try {
-      if (useBackendPII && backendStatus === 'available') {
-        // Use backend PII detection
-        piiResult = await piiDetector.detectPIIWithModel(content)
-      } else {
-        // Fallback to client-side detection
-        piiResult = piiDetector.detectPII(content)
+      if (type === "voice" && content instanceof Blob) {
+        // Send audio to backend for transcription and PII detection
+        const formData = new FormData()
+        formData.append("audio", content, "voice-message.wav")
+        const response = await fetch("http://localhost:5000/api/process_voice", {
+          method: "POST",
+          body: formData,
+        })
+        const data = await response.json()
+        processedContent = data.pii_result?.redactedContent || data.transcribed_text || "[Unrecognized audio]"
+        piiResult = data.pii_result || { hasRedactions: false, detectedFields: [] }
+      } else if (typeof content === "string") {
+        // Only use string methods here!
+        // ...PII detection or text processing...
+        // Example:
+        // piiResult = detectPII(content);
+        // processedContent = piiResult.hasRedactions ? piiResult.redactedContent : content;
       }
     } catch (error) {
-      console.error("PII detection failed, using original content:", error)
-      // Fallback to client-side detection if backend fails
-      piiResult = piiDetector.detectPII(content)
+      console.error("Message processing failed:", error)
+      processedContent = typeof content === "string" ? content : "[Audio message]"
     }
-
-    const processedContent = piiResult.hasRedactions ? piiResult.redactedContent : content
 
     const newMessage: Message = {
       id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,

@@ -59,7 +59,6 @@ def generate_room_code(length=6):
             return code
 
 def get_audio_duration(file_path):
-    """Get audio duration using librosa"""
     try:
         import librosa
         y, sr = librosa.load(file_path, sr=None)
@@ -225,20 +224,24 @@ def upload_voice(room_code):
     
     # Validate room exists
     if room_code not in rooms:
+        print("❌ Room not found:", room_code)
         return jsonify({"error": "Room not found"}), 404
     
     # Validate file upload
     if 'audio' not in request.files:
+        print("❌ No 'audio' file part in request")
         return jsonify({"error": "No 'audio' file part"}), 400
     
     file = request.files['audio']
     if not file or file.filename == '':
+        print("❌ Empty filename")
         return jsonify({"error": "Empty filename"}), 400
     
     # Validate file type
     _, ext = os.path.splitext(file.filename)
     ext = ext.lower()
     if ext not in ALLOWED_AUDIO_EXTENSIONS:
+        print(f"❌ Unsupported file type: {ext}")
         return jsonify({
             "error": f"Unsupported file type: {ext}",
             "supportedTypes": list(ALLOWED_AUDIO_EXTENSIONS)
@@ -250,6 +253,7 @@ def upload_voice(room_code):
     file.seek(0)
     
     if file_size > MAX_AUDIO_SIZE:
+        print(f"❌ File too large: {file_size} bytes (max: {MAX_AUDIO_SIZE} bytes)")
         return jsonify({
             "error": f"File too large: {file_size} bytes (max: {MAX_AUDIO_SIZE} bytes)"
         }), 400
@@ -357,7 +361,7 @@ def get_voice_history(room_code):
             "timestamp": msg["timestamp"],
             "duration": msg.get("duration", 0),
             "audioUrl": msg["audioUrl"],
-            "transcription": msg.get("transcription", {}).get("redacted", ""),
+            "transcription": msg.get("piiDetection", {}).get("redacted", ""),
             "hasRedactions": msg.get("piiDetection", {}).get("hasRedactions", False),
             "detectedFields": msg.get("piiDetection", {}).get("detectedFields", [])
         }
@@ -515,6 +519,86 @@ def handle_disconnect():
             }, room=room)
     
     leave_room(room)
+
+@app.route('/api/process_voice', methods=['POST'])
+def process_voice_api():
+    # Use a default room code or require one in the request
+    room_code = request.args.get('room') or 'default'
+    # Auto-create the room if it doesn't exist
+    if room_code not in rooms:
+        print(f"ℹ️ Auto-creating room: {room_code}")
+        chat = {
+            "id": room_code,
+            "name": None,
+            "participants": [],
+            "messages": [],
+            "lastMessage": None,
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
+            "isGroup": False
+        }
+        rooms[room_code] = chat
+    return api_test_audio_file()
+
+@app.route('/api/test_audio_file', methods=['POST'])
+def api_test_audio_file():
+    """
+    Accept an audio file upload, transcribe it, run PII detection, and return detailed results.
+    """
+    if 'audio' not in request.files:
+        return jsonify({"error": "No 'audio' file part"}), 400
+
+    file = request.files['audio']
+    if not file or file.filename == '':
+        return jsonify({"error": "Empty filename"}), 400
+
+    # Validate file type
+    _, ext = os.path.splitext(file.filename)
+    ext = ext.lower()
+    if ext not in ALLOWED_AUDIO_EXTENSIONS:
+        return jsonify({
+            "error": f"Unsupported file type: {ext}",
+            "supportedTypes": list(ALLOWED_AUDIO_EXTENSIONS)
+        }), 400
+
+    # Save file temporarily
+    temp_dir = os.path.join(app.config['UPLOAD_FOLDER'], "test_uploads")
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_path = os.path.join(temp_dir, secure_filename(file.filename))
+    file.save(temp_path)
+
+    try:
+        # Get audio duration
+        duration = get_audio_duration(temp_path)
+
+        # Load and run speech-to-text
+        t2s_model = get_t2s_model()
+        transcription = t2s_model.transcribe_audio(temp_path)
+
+        # Run PII detection
+        pii_result = process_text_with_pii(transcription)
+
+        # Build response
+        result = {
+            "file": file.filename,
+            "fileSize": os.path.getsize(temp_path),
+            "duration": duration,
+            "transcription": transcription,
+            "piiDetection": {
+                "hasRedactions": pii_result["hasRedactions"],
+                "redactedContent": pii_result["redactedContent"],
+                "detectedFields": pii_result["detectedFields"],
+                "detectionDetails": pii_result["detectionDetails"]
+            }
+        }
+        return jsonify(result), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        # Clean up temp file
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 if __name__ == "__main__":
     socketio.run(app, debug=True)
