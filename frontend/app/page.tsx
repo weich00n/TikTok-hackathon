@@ -157,18 +157,6 @@ export default function MessagingApp() {
                        backendStatus === 'checking' ? 'Checking...' : 'Offline'}
             </span>
           </div>
-          
-          {backendStatus === 'available' && (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={useBackendPII}
-                onChange={(e) => setUseBackendPII(e.target.checked)}
-                className="rounded"
-              />
-              <span>Use AI PII Detection</span>
-            </label>
-          )}
         </div>
       </div>
 
