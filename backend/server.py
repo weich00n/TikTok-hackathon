@@ -12,6 +12,8 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'util'))
 import importlib.util
+from pydub import AudioSegment
+import subprocess
 
 # Lazy loading variables for ML models
 _t2s_model = None
@@ -60,13 +62,31 @@ def generate_room_code(length=6):
 
 def get_audio_duration(file_path):
     try:
-        import librosa
-        y, sr = librosa.load(file_path, sr=None)
-        duration = len(y) / sr
+        audio = AudioSegment.from_file(file_path)
+        duration = len(audio) / 1000.0  # duration in seconds
         return duration
     except Exception as e:
-        print(f"Error getting audio duration: {e}")
-        return 0
+        print(f"Error getting audio duration with pydub: {e}")
+        return 1
+
+def convert_to_wav(input_path):
+    output_path = input_path.rsplit('.', 1)[0] + ".wav"
+    try:
+        result = subprocess.run(
+            [
+                "ffmpeg", "-y", "-i", input_path,
+                "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", output_path
+            ],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        print("ffmpeg stdout:", result.stdout.decode())
+        print("ffmpeg stderr:", result.stderr.decode())
+        return output_path
+    except Exception as e:
+        print(f"FFmpeg conversion failed: {e}")
+        return None
 
 def process_audio_message(audio_path, room_code, sender_name):
     """Process audio message: transcribe, detect PII, create message object"""
@@ -542,20 +562,20 @@ def process_voice_api():
 
 @app.route('/api/test_audio_file', methods=['POST'])
 def api_test_audio_file():
-    """
-    Accept an audio file upload, transcribe it, run PII detection, and return detailed results.
-    """
     if 'audio' not in request.files:
+        print("❌ No 'audio' file part in request")
         return jsonify({"error": "No 'audio' file part"}), 400
 
     file = request.files['audio']
     if not file or file.filename == '':
+        print("❌ Empty filename")
         return jsonify({"error": "Empty filename"}), 400
 
     # Validate file type
     _, ext = os.path.splitext(file.filename)
     ext = ext.lower()
     if ext not in ALLOWED_AUDIO_EXTENSIONS:
+        print(f"❌ Unsupported file type: {ext}")
         return jsonify({
             "error": f"Unsupported file type: {ext}",
             "supportedTypes": list(ALLOWED_AUDIO_EXTENSIONS)
@@ -566,23 +586,37 @@ def api_test_audio_file():
     os.makedirs(temp_dir, exist_ok=True)
     temp_path = os.path.join(temp_dir, secure_filename(file.filename))
     file.save(temp_path)
+    print(f"💾 Saved file to {temp_path}")
+
+    # If the uploaded file is a webm, convert it to wav
+    if ext == ".webm":
+        wav_path = convert_to_wav(temp_path)
+        if wav_path and os.path.exists(wav_path):
+            temp_path = wav_path
+            ext = ".wav"
+        else:
+            print("❌ Could not convert webm to wav")
+            return jsonify({"error": "Audio conversion failed"}), 500
 
     try:
-        # Get audio duration
+        print("⏱️ Getting audio duration...")
         duration = get_audio_duration(temp_path)
+        print(f"⏱️ Duration: {duration}")
 
-        # Load and run speech-to-text
+        print("🧠 Loading T2S model...")
         t2s_model = get_t2s_model()
+        print("🗣️ Transcribing audio...")
         transcription = t2s_model.transcribe_audio(temp_path)
+        print(f"📝 Transcribed text: {transcription}")
 
-        # Run PII detection
+        print("🔎 Running PII detection...")
         pii_result = process_text_with_pii(transcription)
+        print(f"🛡️ Redacted text: {pii_result['redactedContent']}")  # <-- Add this line
 
-        # Build response
         result = {
             "file": file.filename,
-            "fileSize": os.path.getsize(temp_path),
-            "duration": duration,
+            "fileSize": float(os.path.getsize(temp_path)),  # Ensure JSON serializable
+            "duration": float(duration),                   # Ensure JSON serializable
             "transcription": transcription,
             "piiDetection": {
                 "hasRedactions": pii_result["hasRedactions"],
@@ -591,12 +625,13 @@ def api_test_audio_file():
                 "detectionDetails": pii_result["detectionDetails"]
             }
         }
+        print("✅ Finished processing audio file.")
         return jsonify(result), 200
 
     except Exception as e:
+        print(f"❌ Exception in /api/test_audio_file: {e}")
         return jsonify({"error": str(e)}), 500
     finally:
-        # Clean up temp file
         if os.path.exists(temp_path):
             os.remove(temp_path)
 

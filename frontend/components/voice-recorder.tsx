@@ -146,7 +146,7 @@ export function VoiceRecorder({ onSendVoiceMessage, onCancel, isProcessing = fal
   const handleSend = () => {
     if (audioBlob) {
       const formData = new FormData()
-      formData.append("audio", audioBlob, "voice-message.wav")
+      formData.append("audio", audioBlob, "voice-message.webm")
       console.log("Sending audio blob:", audioBlob)
       console.log("Blob type:", audioBlob.type, "Blob size:", audioBlob.size)
       onSendVoiceMessage(audioBlob, recordingTime)
