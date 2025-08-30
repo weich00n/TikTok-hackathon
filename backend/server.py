@@ -635,5 +635,107 @@ def api_test_audio_file():
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
+@app.route('/api/process_text', methods=['POST'])
+def api_process_text():
+    """
+    Process text input directly through PII detection without speech-to-text
+    Accepts JSON with 'text' field and returns PII detection results
+    """
+    try:
+        # Get JSON data from request
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+        
+        # Extract text from request
+        text_input = data.get('text', '').strip()
+        if not text_input:
+            return jsonify({"error": "No 'text' field provided or text is empty"}), 400
+        
+        print(f"📝 Processing text input: {text_input[:100]}...")  # Log first 100 chars
+        
+        # Process text directly through PII detection
+        print("🔎 Running PII detection on text...")
+        pii_result = process_text_with_pii(text_input)
+        print(f"🛡️ PII detection complete. Has redactions: {pii_result['hasRedactions']}")
+        print(f"🛡️ Redacted text: {pii_result['redactedContent']}")
+        
+        # Optional: Add to specific room if room_code is provided
+        room_code = data.get('room_code') or request.args.get('room')
+        sender_name = data.get('sender_name', 'API User')
+        
+        # Prepare response
+        result = {
+            "originalText": text_input,
+            "processedText": pii_result["redactedContent"],
+            "piiDetection": {
+                "hasRedactions": pii_result["hasRedactions"],
+                "redactedContent": pii_result["redactedContent"],
+                "detectedFields": pii_result["detectedFields"],
+                "detectionDetails": pii_result["detectionDetails"]
+            },
+            "metadata": {
+                "textLength": len(text_input),
+                "redactedLength": len(pii_result["redactedContent"]),
+                "processingTime": datetime.now().isoformat()
+            }
+        }
+        
+        # If room_code is provided, optionally add as message to room
+        if room_code and room_code in rooms:
+            print(f"📤 Adding processed text to room: {room_code}")
+            
+            # Create message object
+            message = {
+                "id": create_message_id(),
+                "chatId": room_code,
+                "senderId": sender_name,
+                "content": pii_result["redactedContent"],
+                "type": "text",
+                "timestamp": datetime.now().isoformat(),
+                "timestampMs": int(datetime.now().timestamp() * 1000),
+                "transcription": {
+                    "original": text_input,
+                    "redacted": pii_result["redactedContent"],
+                    "hasRedactions": pii_result["hasRedactions"]
+                },
+                "piiDetection": {
+                    "hasRedactions": pii_result["hasRedactions"],
+                    "detectedFields": pii_result["detectedFields"],
+                    "detectionDetails": pii_result["detectionDetails"]
+                }
+            }
+            
+            # Add to room
+            chat = rooms[room_code]
+            chat["messages"].append(message)
+            chat["lastMessage"] = {
+                "id": message["id"],
+                "content": message["content"],
+                "type": "text",
+                "timestamp": message["timestamp"],
+                "senderId": message["senderId"]
+            }
+            chat["updatedAt"] = datetime.now()
+            
+            # Broadcast to room if desired
+            socketio.emit('new_message', message, room=room_code)
+            
+            result["message"] = {
+                "id": message["id"],
+                "addedToRoom": room_code,
+                "broadcasted": True
+            }
+        
+        print("✅ Text processing completed successfully")
+        return jsonify(result), 200
+        
+    except Exception as e:
+        print(f"❌ Exception in /api/process_text: {e}")
+        return jsonify({
+            "error": "Failed to process text",
+            "details": str(e)
+        }), 500
+    
 if __name__ == "__main__":
     socketio.run(app, debug=True)

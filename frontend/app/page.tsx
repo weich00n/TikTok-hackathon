@@ -9,7 +9,7 @@ export default function MessagingApp() {
   const [currentUser] = useState<User>(mockUsers[0]) // Default to first mock user
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null)
   const [chats, setChats] = useState<Chat[]>([])
-  const [useBackendPII, setUseBackendPII] = useState(false)
+  const [useBackendPII, setUseBackendPII] = useState(true)
   const [backendStatus, setBackendStatus] = useState<'checking' | 'available' | 'unavailable'>('checking')
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export default function MessagingApp() {
   useEffect(() => {
     const checkBackend = async () => {
       try {
-        const response = await fetch("http://localhost:5000/detect_pii", {
+        const response = await fetch("http://127.0.0.1:5000/api/process_text", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: "test" }),
@@ -67,7 +67,7 @@ export default function MessagingApp() {
         if (useBackendPII && backendStatus === 'available') {
           // Use backend PII detection
           try {
-            const response = await fetch("http://localhost:5000/detect_pii", {
+            const response = await fetch("http://127.0.0.1:5000/api/process_text", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ text: content }),
@@ -76,10 +76,10 @@ export default function MessagingApp() {
             if (response.ok) {
               const backendPiiResult = await response.json()
               piiResult = {
-                hasRedactions: backendPiiResult.hasRedactions || false,
-                detectedFields: backendPiiResult.detectedFields || [],
-                redactedContent: backendPiiResult.redactedContent || content,
-                detectionDetails: backendPiiResult.detectionDetails || []
+                hasRedactions: backendPiiResult.piiDetection?.hasRedactions || false,
+                detectedFields: backendPiiResult.piiDetection?.detectedFields || [],
+                redactedContent: backendPiiResult.piiDetection?.redactedContent || content,
+                detectionDetails: backendPiiResult.piiDetection?.detectionDetails || []
               }
               processedContent = piiResult.redactedContent
               console.log("✅ Backend PII detection completed:", piiResult)
