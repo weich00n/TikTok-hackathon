@@ -48,7 +48,7 @@ export default function MessagingApp() {
     if (!selectedChat) return
 
     let processedContent = ""
-    let piiResult = { hasRedactions: false, detectedFields: [] }
+    let piiResult = { hasRedactions: false, detectedFields: [], redactedContent: "", detectionDetails: [] }
 
     try {
       if (type === "voice" && content instanceof Blob) {
@@ -61,17 +61,51 @@ export default function MessagingApp() {
         })
         const data = await response.json()
         processedContent = data.piiDetection?.redactedContent || data.transcribed_text || "[Unrecognized audio]"
-        piiResult = data.piiDetection || { hasRedactions: false, detectedFields: [] }
+        piiResult = data.piiDetection || { hasRedactions: false, detectedFields: [], redactedContent: processedContent, detectionDetails: [] }
       } else if (typeof content === "string") {
-        // Only use string methods here!
-        // ...PII detection or text processing...
-        // Example:
-        // piiResult = detectPII(content);
-        // processedContent = piiResult.hasRedactions ? piiResult.redactedContent : content;
+        // Handle text messages with PII detection
+        if (useBackendPII && backendStatus === 'available') {
+          // Use backend PII detection
+          try {
+            const response = await fetch("http://localhost:5000/detect_pii", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text: content }),
+            })
+            
+            if (response.ok) {
+              const backendPiiResult = await response.json()
+              piiResult = {
+                hasRedactions: backendPiiResult.hasRedactions || false,
+                detectedFields: backendPiiResult.detectedFields || [],
+                redactedContent: backendPiiResult.redactedContent || content,
+                detectionDetails: backendPiiResult.detectionDetails || []
+              }
+              processedContent = piiResult.redactedContent
+              console.log("✅ Backend PII detection completed:", piiResult)
+            } else {
+              console.warn("Backend PII detection failed, falling back to client-side")
+              // Fallback to client-side detection
+              piiResult = piiDetector.detectPII(content)
+              processedContent = piiResult.hasRedactions ? piiResult.redactedContent : content
+            }
+          } catch (fetchError) {
+            console.warn("Backend PII detection error, falling back to client-side:", fetchError)
+            // Fallback to client-side detection
+            piiResult = piiDetector.detectPII(content)
+            processedContent = piiResult.hasRedactions ? piiResult.redactedContent : content
+          }
+        } else {
+          // Use client-side PII detection
+          piiResult = piiDetector.detectPII(content)
+          processedContent = piiResult.hasRedactions ? piiResult.redactedContent : content
+          console.log("✅ Client-side PII detection completed:", piiResult)
+        }
       }
     } catch (error) {
       console.error("Message processing failed:", error)
       processedContent = typeof content === "string" ? content : "[Audio message]"
+      piiResult = { hasRedactions: false, detectedFields: [], redactedContent: processedContent, detectionDetails: [] }
     }
 
     const newMessage: Message = {
@@ -84,6 +118,11 @@ export default function MessagingApp() {
       isRedacted: piiResult.hasRedactions,
       originalContent: content,
       redactedFields: piiResult.detectedFields,
+      piiDetection: {
+        hasRedactions: piiResult.hasRedactions,
+        detectedFields: piiResult.detectedFields,
+        detectionDetails: piiResult.detectionDetails || []
+      }
     }
 
     const updatedChat = {
@@ -98,7 +137,10 @@ export default function MessagingApp() {
 
     console.log("[v0] Message sent:", newMessage)
     console.log("PII Detection Method:", useBackendPII && backendStatus === 'available' ? 'Backend' : 'Client-side')
-
+    
+    if (piiResult.hasRedactions) {
+      console.log("🔒 PII detected and redacted:", piiResult.detectedFields)
+    }
   }
 
   return (
